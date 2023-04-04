@@ -1,64 +1,69 @@
-resource "google_storage_bucket" "function_bucket" {
-    project  = "sailor-321711"
-    name     = "${var.project_id}-function"
-    location = var.region
+resource "google_project_service" "funcapi" {
+  project = var.project_id
+  service = "cloudfunctions.googleapis.com"
+}
+# resource "google_project_iam_binding" "cloud_functions_service_agent_binding" {
+#   depends_on =[google_project_service.funcapi]
+#   project = var.project_id
+#   role    = "roles/vpcaccess.user"
+
+
+#   members = var.members
+# }
+
+resource "google_storage_bucket" "bucket" {
+  depends_on    = [data.archive_file.source]
+  project       = var.project_id
+  name          = var.bucket_name
+  location      = var.region
+  force_destroy = true
+
+  uniform_bucket_level_access = true
+
+}
+resource "google_storage_bucket_object" "archive" {
+  depends_on = [google_storage_bucket.bucket]
+  name   = data.archive_file.source.output_path
+  bucket = google_storage_bucket.bucket.name
+  
+  # Set the content of the zip file to the contents of the local directory
+  source = data.archive_file.source.output_path
 }
 
-resource "google_storage_bucket" "input_bucket" {
-    project  = "sailor-321711"
-    name     = "${var.project_id}-input"
-    location = var.region
-}
-# Generates an archive of the source code compressed as a .zip file.
+
 
 data "archive_file" "source" {
     type        = "zip"
-    source_dir  = "/home/silpasree/function-code"
-    output_path = "/tmp/function.zip"
+    source_dir  = "function-code"
+    output_path = "tmp/function.zip"
 }
 
 # Add source code zip to the Cloud Function's bucket
 
-resource "google_storage_bucket_object" "zip" {
-    source       = data.archive_file.source.output_path
-    content_type = "application/zip"
-
-    # Append to the MD5 checksum of the files's content
-    # to force the zip to be updated as soon as a change occurs
-    name         = "src-${data.archive_file.source.output_md5}.zip"
-    bucket       = google_storage_bucket.function_bucket.name
-
-    # Dependencies are automatically inferred so these lines can be deleted
-    depends_on   = [
-        google_storage_bucket.function_bucket, 
-        data.archive_file.source
-    ]
-}
 
 # Create the Cloud function triggered by a `Finalize` event on the bucket
 resource "google_cloudfunctions_function" "function" {
-    project               = "sailor-321711"
-    region                = "asia-south1"
-    name                  = "function-trigger-on-gcs"
-    runtime               = "python37"  # of course changeable
+    project               = var.project_id
+    region                = var.region
+    name                  = var.function_name
+    runtime               = var.function_runtime  
+    vpc_connector         = var.vpc_connector
+    vpc_connector_egress_settings = "PRIVATE_RANGES_ONLY"
 
     # Get the source code of the cloud function as a Zip compression
-    source_archive_bucket = google_storage_bucket.function_bucket.name
-    source_archive_object = google_storage_bucket_object.zip.name
+    source_archive_bucket = google_storage_bucket_object.archive.bucket
+    source_archive_object = google_storage_bucket_object.archive.name
 
     # Must match the function name in the cloud function `main.py` source code
-    entry_point           = "hello_gcs"
+    entry_point           = "helloWorld"
+    trigger_http          = true
     
-    # 
-    event_trigger {
-        event_type = "google.storage.object.finalize"
-        resource   = "${var.project_id}-input"
-    }
 
     # Dependencies are automatically inferred so these lines can be deleted
     depends_on            = [
-        google_storage_bucket.function_bucket, 
-        google_storage_bucket_object.zip
+       // google_storage_bucket.bucket,
+        google_storage_bucket_object.archive,
+        google_project_service.funcapi
     ]
 }
 
