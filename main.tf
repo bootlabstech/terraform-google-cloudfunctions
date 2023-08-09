@@ -24,7 +24,7 @@
 #   depends_on = [google_storage_bucket.bucket]
 #   name   = data.archive_file.source.output_path
 #   bucket = google_storage_bucket.bucket.name
-  
+
 #   # Set the content of the zip file to the contents of the local directory
 #   source = data.archive_file.source.output_path
 # }
@@ -42,24 +42,26 @@
 
 # Create the Cloud function triggered by a `Finalize` event on the bucket
 resource "google_cloudfunctions_function" "function" {
-    project               = var.project_id
-    region                = var.region
-    name                  = var.function_name
-    runtime               = var.function_runtime  
-    vpc_connector         = var.vpc_connector
-    vpc_connector_egress_settings = "PRIVATE_RANGES_ONLY"
+  project                       = var.project_id
+  region                        = var.region
+  name                          = var.function_name
+  runtime                       = var.function_runtime
+  vpc_connector                 = var.vpc_connector
+  vpc_connector_egress_settings = "PRIVATE_RANGES_ONLY"
 
-    # Get the source code of the cloud function as a Zip compression
-    source_archive_bucket = var.archive_bucket
-    source_archive_object = var.archive_object
+  # Get the source code of the cloud function as a Zip compression
+  source_archive_bucket = var.archive_bucket
+  source_archive_object = var.archive_object
 
-    # Must match the function name in the cloud function `main.py` source code
-    entry_point           = var.entry_point
-    trigger_http          = true
-    
+  # Must match the function name in the cloud function `main.py` source code
+  entry_point  = var.entry_point
+  trigger_http = true
 
-    # Dependencies are automatically inferred so these lines can be deleted
 
+  # Dependencies are automatically inferred so these lines can be deleted
+  lifecycle {
+    ignore_changes = [labels]
+  }
 }
 
 
