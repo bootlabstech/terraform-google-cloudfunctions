@@ -1,13 +1,9 @@
 variable "project_id" {
   type = string
 }
-# variable "host_project_id" {
-#  type = string
-# }
 variable "region" {
   type = string
 }
-
 variable "vpc_connector" {
   type = string
 }
@@ -27,3 +23,22 @@ variable "archive_bucket" {
 variable "archive_object" {
   type = string
 }
+variable "description" {
+  type = string
+}
+variable "available_memory_mb" {
+  type = number
+}
+variable "pubsub_topic" {
+  type = string
+}
+variable "bigquery_dataset" {
+  type = string
+}
+variable "bigquery_table" {
+  type = string
+}
+
+
+
+
